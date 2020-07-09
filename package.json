@@ -1,0 +1,28 @@
+{
+  "name": "frontend-project-lvl3",
+  "version": "1.0.0",
+  "description": "RSS",
+  "main": "index.js",
+  "scripts": {
+    "test": "npx -n --experimental-vm-modules jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/evgeniya-osmakova/frontend-project-lvl3.git"
+  },
+  "keywords": [
+    "rss"
+  ],
+  "author": "Evgeniya Osmakova",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/evgeniya-osmakova/frontend-project-lvl3/issues"
+  },
+  "homepage": "https://github.com/evgeniya-osmakova/frontend-project-lvl3#readme",
+  "dependencies": {},
+  "devDependencies": {
+    "eslint": "^7.4.0",
+    "eslint-config-airbnb-base": "^14.2.0",
+    "eslint-plugin-import": "^2.22.0"
+  }
+}
