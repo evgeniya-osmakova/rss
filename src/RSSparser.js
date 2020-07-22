@@ -1,6 +1,7 @@
 import i18next from 'i18next';
+import * as _ from 'lodash';
 
-const rssParser = (data, url) => {
+const parseRSS = (data, url) => {
   const parser = new DOMParser();
   const document = parser.parseFromString(data, 'text/xml');
   if (!document.querySelector('channel')) {
@@ -10,15 +11,24 @@ const rssParser = (data, url) => {
   if (parserError) {
     throw new Error(document.querySelector('div').textContent);
   }
-  const title = document.querySelector('title').innerHTML;
+  const title = document.querySelector('title').textContent;
   const posts = document.getElementsByTagName('item');
   const postsData = [...posts].map((post) => {
-    const postTitle = post.querySelector('title').innerHTML;
+    const postTitle = post.querySelector('title').textContent;
     const postDescription = post.querySelector('description').textContent;
-    const postURL = post.querySelector('link').innerHTML;
-    return { title: postTitle, description: postDescription, url: postURL };
+    const postURL = post.querySelector('link').textContent;
+    return {
+      title: postTitle,
+      description: postDescription,
+      url: postURL,
+    };
   });
-  return { title, posts: postsData, url };
+  return {
+    title,
+    id: _.uniqueId(),
+    posts: postsData,
+    url,
+  };
 };
 
-export default rssParser;
+export default parseRSS;

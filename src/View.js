@@ -1,4 +1,5 @@
 import i18next from 'i18next';
+import onChange from 'on-change';
 import * as _ from 'lodash';
 
 const render = (document, form, feedback, submitButton, feeds, state) => {
@@ -14,61 +15,52 @@ const render = (document, form, feedback, submitButton, feeds, state) => {
   };
 
   const buildFeeds = () => {
-    const feedName = document.createTextNode(state.data.feeds[0].title);
+    const { title, id, posts } = state.data.newFeed;
+    const feedName = document.createTextNode(title);
     const h2El = document.createElement('h2');
-    h2El.id = state.data.feeds[0].id;
+    h2El.id = id;
     h2El.append(feedName);
-    const aElements = state.data.feeds[0].posts.map(({ title, url }) => createPostElem(title, url));
+    const aElements = posts.map(({ title: postTitle, url }) => createPostElem(postTitle, url));
     feeds.prepend(h2El);
     h2El.after(...aElements);
   };
 
   const updateFeeds = () => {
-    state.data.feeds.forEach(({ id, posts }) => {
-      const feed = document.getElementById(id);
-      const lastUpdatedPostEl = feed.nextElementSibling.firstElementChild;
-      const lastUpdatedPostURL = lastUpdatedPostEl.href;
-      const lastUpdatedPostIndex = _.findIndex(posts, (obj) => obj.url === lastUpdatedPostURL);
-      for (let i = 0; i < lastUpdatedPostIndex; i += 1) {
-        const { title, url } = posts[i];
-        const postEl = createPostElem(title, url);
-        feed.after(postEl);
-      }
+    const { id, posts } = state.data.updatedFeed;
+    const feed = document.getElementById(id);
+    posts.forEach(({ title, url }) => {
+      const postEl = createPostElem(title, url);
+      feed.after(postEl);
     });
   };
 
-  const changeFormData = (addOrRemoveSuccess, addOrRemoveDanger, message) => {
-    feedback.classList[addOrRemoveDanger]('text-danger');
-    feedback.classList[addOrRemoveSuccess]('text-success');
-    // eslint-disable-next-line no-param-reassign
-    feedback.textContent = message;
-    form.elements.url.classList[addOrRemoveDanger]('is-invalid');
-    // eslint-disable-next-line no-unused-expressions
-    (addOrRemoveSuccess === 'add')
-      ? submitButton.removeAttribute('disabled')
-      : submitButton.setAttribute('disabled', true);
-  };
-
-  const { processState } = state.form;
-  switch (processState) {
-    case ('filling'):
-      changeFormData('add', 'remove', '');
-      break;
+  const { innerState } = state.form;
+  switch (innerState) {
     case ('failed'): {
-      const errMsg = state.form.error;
-      changeFormData('remove', 'add', errMsg);
-      break;
-    }
-    case ('unexpected'): {
-      const errMsg = state.form.error;
-      changeFormData('remove', 'add', errMsg);
+      submitButton.removeAttribute('disabled');
+      const { error } = state.form;
+      feedback.classList.add('text-danger');
+      feedback.classList.remove('text-success');
+      // eslint-disable-next-line no-param-reassign
+      feedback.textContent = error;
+      form.elements.url.classList.add('is-invalid');
       break;
     }
     case ('sending'):
-      changeFormData('add', 'remove', i18next.t('messages.loading'));
+      submitButton.setAttribute('disabled', true);
+      feedback.classList.remove('text-danger');
+      form.elements.url.classList.remove('is-invalid');
+      feedback.classList.add('text-success');
+      // eslint-disable-next-line no-param-reassign
+      feedback.textContent = i18next.t('messages.loading');
       break;
     case ('finished'):
-      changeFormData('add', 'remove', i18next.t('messages.loaded'));
+      submitButton.removeAttribute('disabled');
+      feedback.classList.remove('text-danger');
+      feedback.classList.add('text-success');
+      form.elements.url.classList.remove('is-invalid');
+      // eslint-disable-next-line no-param-reassign
+      feedback.textContent = i18next.t('messages.loaded');
       form.reset();
       buildFeeds();
       break;
@@ -76,8 +68,17 @@ const render = (document, form, feedback, submitButton, feeds, state) => {
       updateFeeds();
       break;
     default:
-      throw new Error(`Unknown state: ${processState}`);
+      submitButton.removeAttribute('disabled');
+      form.elements.url.classList.remove('is-invalid');
+      feedback.classList.remove('text-danger');
+      feedback.classList.add('text-success');
   }
 };
 
-export default render;
+const view = (state, document, form, feedback, submitButton, feeds) => {
+  const watchedState = onChange(state, () => render(document, form, feedback, submitButton,
+    feeds, watchedState));
+  return watchedState;
+};
+
+export default view;

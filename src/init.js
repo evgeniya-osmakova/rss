@@ -2,10 +2,9 @@ import * as yup from 'yup';
 import * as _ from 'lodash';
 import axios from 'axios';
 import i18next from 'i18next';
-import onChange from 'on-change';
 import resources from './locales/index';
-import render from './View';
-import rssParser from './RSSparser';
+import parseRSS from './RSSparser';
+import view from './View';
 
 const init = () => {
   i18next.init({
@@ -15,12 +14,14 @@ const init = () => {
   }).then(() => {
     const state = {
       form: {
-        processState: 'filling',
+        innerState: 'checking',
         error: null,
       },
       data: {
         urls: [],
-        feeds: [],
+        feeds: {},
+        newFeed: {},
+        updatedFeed: {},
       },
     };
     const form = document.querySelector('.rss-form');
@@ -28,68 +29,75 @@ const init = () => {
     const submitButton = document.querySelector('.btn');
     const feeds = document.querySelector('.feeds');
 
-    const watchedState = onChange(state, () => render(document, form, feedback, submitButton,
-      feeds, watchedState));
+    const watchedState = view(state, document, form, feedback, submitButton, feeds);
 
-    form.addEventListener('change', (e) => {
+    const proxy = 'https://cors-anywhere.herokuapp.com/';
+    const getProxyURL = (url) => `${proxy}${url}`;
+
+    const schema = yup.object().shape({ website: yup.string().url() });
+    const checkFormValidity = (url) => schema.isValid({ website: url });
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      watchedState.form.innerState = 'checking';
       watchedState.form.error = null;
-      watchedState.form.processState = 'filling';
-      const { value } = e.target;
-      const schema = yup.object().shape({ website: yup.string().url() });
-      schema
-        .isValid({ website: value })
+      const formData = new FormData(e.target);
+      const url = formData.get('url');
+      checkFormValidity(url)
         .then((valid) => {
           if (!valid) {
             watchedState.form.error = i18next.t('messages.invalidURL');
-            watchedState.form.processState = 'failed';
+            watchedState.form.innerState = 'failed';
+          } else if (watchedState.data.urls.includes(url)) {
+            watchedState.form.error = i18next.t('messages.duplicateURL');
+            watchedState.form.innerState = 'failed';
+          } else {
+            watchedState.form.innerState = 'sending';
+            axios.get(getProxyURL(url), { timeout: 5000 })
+              .then((response) => {
+                const parsedData = parseRSS(response.data, url);
+                const { title, id, posts } = parsedData;
+                watchedState.data.feeds[title] = { id, posts };
+                watchedState.data.newFeed = { title, id, posts };
+                watchedState.data.urls.push(url);
+                watchedState.form.innerState = 'finished';
+              })
+              .catch((error) => {
+                watchedState.form.error = `Error: ${error.message}`;
+                watchedState.form.innerState = 'failed';
+              });
           }
         });
     });
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const formData = new FormData(e.target);
-      const url = formData.get('url');
-      if (watchedState.data.urls.includes(url)) {
-        watchedState.form.error = i18next.t('messages.duplicateURL');
-        watchedState.form.processState = 'failed';
-      } else {
-        watchedState.form.processState = 'sending';
-        const proxy = 'https://cors-anywhere.herokuapp.com/';
-        axios.get(`${proxy}${url}`, { timeout: 5000 })
-          .then((response) => {
-            const parsedData = rssParser(response.data, url);
-            watchedState.data.feeds.unshift(parsedData);
-            watchedState.data.feeds[0].id = _.uniqueId();
-            watchedState.data.urls.push(url);
-            watchedState.form.processState = 'finished';
-          })
-          .catch((error) => {
-            watchedState.form.processState = 'unexpected';
-            watchedState.form.error = `Error: ${error.message}`;
-          });
-      }
-    });
+
     const inner = () => {
       const updateRSS = () => {
-        const { feeds: listOfFeeds } = state.data;
-        listOfFeeds.forEach((feed) => {
-          const { url } = feed;
-          const proxy = 'https://cors-anywhere.herokuapp.com/';
-          axios.get(`${proxy}${url}`, { timeout: 5000 })
+        watchedState.form.innerState = 'checking';
+        const { urls } = state.data;
+        urls.forEach((feedURL) => {
+          axios.get(getProxyURL(feedURL), { timeout: 5000 })
             .then((response) => {
-              const parsedData = rssParser(response.data, url);
-              const updatedFeedIndex = _.findIndex(listOfFeeds, (obj) => obj.url === url);
-              watchedState.form.processState = 'updated';
-              watchedState.data.feeds[updatedFeedIndex].posts = parsedData.posts;
+              const parsedData = parseRSS(response.data, feedURL);
+              const { posts: updatedPosts, title } = parsedData;
+              const { posts: oldPosts, id } = watchedState.data.feeds[title];
+              const newPosts = _.differenceWith(updatedPosts, oldPosts, _.isEqual);
+              if (newPosts.length > 0) {
+                watchedState.data.updatedFeed = { id, posts: newPosts };
+                newPosts.forEach((newPost) => oldPosts.unshift(newPost));
+                watchedState.form.innerState = 'updated';
+              }
             })
             .catch((error) => {
               watchedState.form.error = `Error: ${error.message}`;
-              watchedState.form.processState = 'unexpected';
+              watchedState.form.innerState = 'failed';
             });
         });
       };
 
-      updateRSS();
+      if (state.data.urls.length > 0) {
+        updateRSS();
+      }
+
       setTimeout(inner, 5000);
     };
 
