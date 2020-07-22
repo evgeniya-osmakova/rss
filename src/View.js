@@ -69,9 +69,6 @@ const render = (document, form, feedback, submitButton, feeds, state) => {
       break;
     default:
       submitButton.removeAttribute('disabled');
-      form.elements.url.classList.remove('is-invalid');
-      feedback.classList.remove('text-danger');
-      feedback.classList.add('text-success');
   }
 };
 
