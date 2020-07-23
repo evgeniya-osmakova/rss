@@ -28,8 +28,9 @@ const init = () => {
     const feedback = document.querySelector('.feedback');
     const submitButton = document.querySelector('.btn');
     const feeds = document.querySelector('.feeds');
+    const input = document.querySelector('.form-control');
 
-    const watchedState = view(state, document, form, feedback, submitButton, feeds);
+    const watchedState = view(state, document, form, feedback, submitButton, feeds, input);
 
     const proxy = 'https://cors-anywhere.herokuapp.com/';
     const getProxyURL = (url) => `${proxy}${url}`;
@@ -53,7 +54,7 @@ const init = () => {
             watchedState.form.innerState = 'failed';
           } else {
             watchedState.form.innerState = 'sending';
-            axios.get(getProxyURL(url), { timeout: 5000 })
+            axios.get(getProxyURL(url), { timeout: 50000 })
               .then((response) => {
                 const parsedData = parseRSS(response.data, url);
                 const { title, id, posts } = parsedData;

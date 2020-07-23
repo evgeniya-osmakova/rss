@@ -2,7 +2,7 @@ import i18next from 'i18next';
 import onChange from 'on-change';
 import * as _ from 'lodash';
 
-const render = (document, form, feedback, submitButton, feeds, state) => {
+const render = (document, form, feedback, submitButton, feeds, state, input) => {
   const createPostElem = (title, url) => {
     const postName = document.createTextNode(title);
     const aEl = document.createElement('a');
@@ -37,6 +37,7 @@ const render = (document, form, feedback, submitButton, feeds, state) => {
   const { innerState } = state.form;
   switch (innerState) {
     case ('failed'): {
+      input.removeAttribute('readonly');
       submitButton.removeAttribute('disabled');
       const { error } = state.form;
       feedback.classList.add('text-danger');
@@ -48,6 +49,7 @@ const render = (document, form, feedback, submitButton, feeds, state) => {
     }
     case ('sending'):
       submitButton.setAttribute('disabled', true);
+      input.setAttribute('readonly', true);
       feedback.classList.remove('text-danger');
       form.elements.url.classList.remove('is-invalid');
       feedback.classList.add('text-success');
@@ -55,6 +57,7 @@ const render = (document, form, feedback, submitButton, feeds, state) => {
       feedback.textContent = i18next.t('messages.loading');
       break;
     case ('finished'):
+      input.removeAttribute('readonly');
       submitButton.removeAttribute('disabled');
       feedback.classList.remove('text-danger');
       feedback.classList.add('text-success');
@@ -69,12 +72,13 @@ const render = (document, form, feedback, submitButton, feeds, state) => {
       break;
     default:
       submitButton.removeAttribute('disabled');
+      input.removeAttribute('readonly');
   }
 };
 
-const view = (state, document, form, feedback, submitButton, feeds) => {
+const view = (state, document, form, feedback, submitButton, feeds, input) => {
   const watchedState = onChange(state, () => render(document, form, feedback, submitButton,
-    feeds, watchedState));
+    feeds, watchedState, input));
   return watchedState;
 };
 
