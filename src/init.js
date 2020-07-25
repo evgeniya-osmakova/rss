@@ -3,8 +3,8 @@ import * as _ from 'lodash';
 import axios from 'axios';
 import i18next from 'i18next';
 import resources from './locales/index';
-import parseRSS from './RSSparser';
-import view from './View';
+import parseRSS from './rssParser';
+import watch from './view';
 
 const init = () => {
   i18next.init({
@@ -14,95 +14,110 @@ const init = () => {
   }).then(() => {
     const state = {
       form: {
-        innerState: 'checking',
         error: null,
+        isValid: true,
       },
       data: {
+        state: 'filling',
         urls: [],
         feeds: {},
-        newFeed: {},
-        updatedFeed: {},
+        newFeedTitle: '',
+        updatedFeedData: {
+          feedTitle: '',
+          lastNewPostIndex: '',
+        },
       },
     };
+
     const form = document.querySelector('.rss-form');
     const feedback = document.querySelector('.feedback');
     const submitButton = document.querySelector('.btn');
     const feeds = document.querySelector('.feeds');
     const input = document.querySelector('.form-control');
 
-    const watchedState = view(state, document, form, feedback, submitButton, feeds, input);
+    const watchedState = watch(state, document, form, feedback, submitButton, feeds, input);
 
     const proxy = 'https://cors-anywhere.herokuapp.com/';
     const getProxyURL = (url) => `${proxy}${url}`;
 
-    const schema = yup.object().shape({ website: yup.string().url() });
-    const checkFormValidity = (url) => schema.isValid({ website: url });
-
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      watchedState.form.innerState = 'checking';
-      watchedState.form.error = null;
-      const formData = new FormData(e.target);
-      const url = formData.get('url');
-      checkFormValidity(url)
-        .then((valid) => {
-          if (!valid) {
-            watchedState.form.error = i18next.t('messages.invalidURL');
-            watchedState.form.innerState = 'failed';
-          } else if (watchedState.data.urls.includes(url)) {
-            watchedState.form.error = i18next.t('messages.duplicateURL');
-            watchedState.form.innerState = 'failed';
-          } else {
-            watchedState.form.innerState = 'sending';
-            axios.get(getProxyURL(url), { timeout: 5000 })
-              .then((response) => {
-                const parsedData = parseRSS(response.data, url);
-                const { title, id, posts } = parsedData;
-                watchedState.data.feeds[title] = { id, posts };
-                watchedState.data.newFeed = { title, id, posts };
-                watchedState.data.urls.push(url);
-                watchedState.form.innerState = 'finished';
-              })
-              .catch((error) => {
-                watchedState.form.error = `Error: ${error.message}`;
-                watchedState.form.innerState = 'failed';
-              });
-          }
-        });
-    });
-
-    const inner = () => {
+    const updateFeeds = () => {
       const updateRSS = () => {
-        watchedState.form.innerState = 'checking';
+        watchedState.data.state = 'filling';
         const { urls } = state.data;
         urls.forEach((feedURL) => {
-          axios.get(getProxyURL(feedURL), { timeout: 5000 })
+          axios.get(getProxyURL(feedURL), { timeout: 50000 })
             .then((response) => {
-              const parsedData = parseRSS(response.data, feedURL);
+              const parsedData = parseRSS(response.data);
               const { posts: updatedPosts, title } = parsedData;
-              const { posts: oldPosts, id } = watchedState.data.feeds[title];
+              const { posts: oldPosts } = state.data.feeds[title];
               const newPosts = _.differenceWith(updatedPosts, oldPosts, _.isEqual);
               if (newPosts.length > 0) {
-                watchedState.data.updatedFeed = { id, posts: newPosts };
-                newPosts.forEach((newPost) => oldPosts.unshift(newPost));
-                watchedState.form.innerState = 'updated';
+                const reversedNewPosts = [...newPosts].reverse();
+                watchedState.data.updatedFeedData.feedTitle = title;
+                watchedState.data.updatedFeedData.lastNewPostIndex = newPosts.length;
+                reversedNewPosts.forEach((newPost) => oldPosts.unshift(newPost));
+                watchedState.data.state = 'updated';
+                watchedState.data.state = 'filling';
               }
             })
             .catch((error) => {
               watchedState.form.error = `Error: ${error.message}`;
-              watchedState.form.innerState = 'failed';
+              watchedState.form.isValid = false;
             });
         });
       };
 
-      if (state.data.urls.length > 0) {
-        updateRSS();
-      }
+      updateRSS();
 
-      setTimeout(inner, 5000);
+      setTimeout(updateFeeds, 5000);
     };
 
-    inner();
+    const schema = yup.object().shape({
+      website: yup.string()
+        .url()
+        .test((value) => !state.data.urls.includes(value)),
+    });
+
+    const checkFormValidity = (url) => schema.validate({ website: url })
+      .catch((err) => {
+        if (err.type === 'url') {
+          watchedState.form.error = i18next.t('messages.invalidURL');
+        } else {
+          watchedState.form.error = i18next.t('messages.duplicatedURL');
+        }
+        watchedState.form.isValid = false;
+      })
+      .then((validURL) => validURL);
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      watchedState.data.state = 'filling';
+      watchedState.form.error = null;
+      watchedState.form.isValid = true;
+      const formData = new FormData(e.target);
+      const url = formData.get('url');
+      checkFormValidity(url)
+        .then((valid) => {
+          if (valid) {
+            watchedState.data.state = 'sending';
+            axios.get(getProxyURL(url), { timeout: 50000 })
+              .then((response) => {
+                const parsedData = parseRSS(response.data);
+                const { title, id, posts } = parsedData;
+                watchedState.data.feeds[title] = { id, posts };
+                watchedState.data.newFeedTitle = title;
+                watchedState.data.urls.push(url);
+                watchedState.data.state = 'loaded';
+                watchedState.data.state = 'filling';
+                setTimeout(updateFeeds, 5000);
+              })
+              .catch((error) => {
+                watchedState.form.error = `Error: ${error.message}`;
+                watchedState.form.isValid = false;
+              });
+          }
+        });
+    });
   });
 };
 

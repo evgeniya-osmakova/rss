@@ -1,7 +1,7 @@
 import i18next from 'i18next';
 import * as _ from 'lodash';
 
-const parseRSS = (data, url) => {
+const parseRSS = (data) => {
   const parser = new DOMParser();
   const document = parser.parseFromString(data, 'text/xml');
   if (!document.querySelector('channel')) {
@@ -23,12 +23,7 @@ const parseRSS = (data, url) => {
       url: postURL,
     };
   });
-  return {
-    title,
-    id: _.uniqueId(),
-    posts: postsData,
-    url,
-  };
+  return { title, id: _.uniqueId(), posts: postsData };
 };
 
 export default parseRSS;
