@@ -45,7 +45,7 @@ const init = () => {
         watchedState.data.state = 'filling';
         const { urls } = state.data;
         urls.forEach((feedURL) => {
-          axios.get(getProxyURL(feedURL), { timeout: 50000 })
+          axios.get(getProxyURL(feedURL), { timeout: 5000 })
             .then((response) => {
               const parsedData = parseRSS(response.data);
               const { posts: updatedPosts, title } = parsedData;
@@ -100,7 +100,7 @@ const init = () => {
         .then((valid) => {
           if (valid) {
             watchedState.data.state = 'sending';
-            axios.get(getProxyURL(url), { timeout: 50000 })
+            axios.get(getProxyURL(url), { timeout: 5000 })
               .then((response) => {
                 const parsedData = parseRSS(response.data);
                 const { title, id, posts } = parsedData;
