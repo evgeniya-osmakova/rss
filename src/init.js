@@ -6,6 +6,8 @@ import resources from './locales/index';
 import parseRSS from './rssParser';
 import watch from './view';
 
+const timeout = 2000;
+
 const init = () => {
   i18next.init({
     lng: 'en',
@@ -41,12 +43,15 @@ const init = () => {
     const getProxyURL = (url) => `${proxy}${url}`;
 
     const updateFeeds = () => {
+      watchedState.data.state = 'filling';
+
       const updateRSS = () => {
-        watchedState.data.state = 'filling';
         const { urls } = state.data;
+        watchedState.data.state = 'updating';
         urls.forEach((feedURL) => {
-          axios.get(getProxyURL(feedURL), { timeout: 5000 })
+          axios.get(getProxyURL(feedURL), { timeout })
             .then((response) => {
+              watchedState.data.state = 'filling';
               const parsedData = parseRSS(response.data);
               const { posts: updatedPosts, title } = parsedData;
               const { posts: oldPosts } = state.data.feeds[title];
@@ -60,16 +65,17 @@ const init = () => {
                 watchedState.data.state = 'filling';
               }
             })
-            .catch((error) => {
-              watchedState.form.error = `Error: ${error.message}`;
-              watchedState.form.isValid = false;
+            .catch(() => {
+              // watchedState.form.error = `Error: ${error.message}`;
+              // watchedState.form.isValid = false;
+              setTimeout(updateFeeds, timeout);
             });
         });
       };
 
       updateRSS();
 
-      setTimeout(updateFeeds, 5000);
+      setTimeout(updateFeeds, timeout);
     };
 
     const schema = yup.object().shape({
@@ -90,8 +96,8 @@ const init = () => {
       .then((validURL) => validURL);
 
     form.addEventListener('submit', (e) => {
+      watchedState.data.state = 'sending';
       e.preventDefault();
-      watchedState.data.state = 'filling';
       watchedState.form.error = null;
       watchedState.form.isValid = true;
       const formData = new FormData(e.target);
@@ -99,8 +105,7 @@ const init = () => {
       checkFormValidity(url)
         .then((valid) => {
           if (valid) {
-            watchedState.data.state = 'sending';
-            axios.get(getProxyURL(url), { timeout: 5000 })
+            axios.get(getProxyURL(url), { timeout })
               .then((response) => {
                 const parsedData = parseRSS(response.data);
                 const { title, id, posts } = parsedData;

@@ -70,6 +70,10 @@ const render = (document, form, feedback, submitButton, feeds, state, input) => 
         form.reset();
         buildFeeds();
         break;
+      case ('updating'):
+        submitButton.setAttribute('disabled', true);
+        input.setAttribute('readonly', true);
+        break;
       case ('updated'):
         updateFeeds();
         break;

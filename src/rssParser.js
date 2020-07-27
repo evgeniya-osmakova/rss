@@ -16,7 +16,7 @@ const parseRSS = (data) => {
   const postsData = [...posts].map((post) => {
     const postTitle = post.querySelector('title').textContent;
     const postDescription = post.querySelector('description').textContent;
-    const postURL = post.querySelector('link').textContent;
+    const postURL = post.querySelector('link').textContent.split('?')[0];
     return {
       title: postTitle,
       description: postDescription,
