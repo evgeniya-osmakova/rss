@@ -1,5 +1,4 @@
 import i18next from 'i18next';
-import * as _ from 'lodash';
 
 const parseRSS = (data) => {
   const parser = new DOMParser();
@@ -11,19 +10,19 @@ const parseRSS = (data) => {
   if (parserError) {
     throw new Error(document.querySelector('div').textContent);
   }
-  const title = document.querySelector('title').textContent;
+  const feedTitle = document.querySelector('title').textContent;
   const posts = document.getElementsByTagName('item');
   const postsData = [...posts].map((post) => {
     const postTitle = post.querySelector('title').textContent;
-    const postDescription = post.querySelector('description').textContent;
     const postURL = post.querySelector('link').textContent.split('?')[0];
-    return {
-      title: postTitle,
-      description: postDescription,
-      url: postURL,
-    };
+    // .split('?')[0] нужно, чтобы посты не дублировались. При загрузке rss, например,
+    // c https://news.yandex.ru/Moscow/index.rss в ответ при обновлении начинают приходить повторные посты,
+    // отличающиеся окончанием url после знака '?'.
+    // Я проверяю посты на дубли по комбинации url+заголовок (проверка только по заголовку
+    // мне кажется ненадёжной), поэтому без split получается путаница
+    return { postTitle, postURL };
   });
-  return { title, id: _.uniqueId(), posts: postsData };
+  return { feedTitle, posts: postsData };
 };
 
 export default parseRSS;
