@@ -67,15 +67,16 @@ const loadFeeds = (feedUrl, state) => {
       // eslint-disable-next-line no-param-reassign
       state.stateOfLoading.isLoaded = false;
       // eslint-disable-next-line no-param-reassign
-      state.stateOfLoading.error = `Error: ${error.message}`;
+      state.stateOfLoading.loadingError = `Error: ${error.message}`;
     });
 };
 
 const init = () => {
   const state = {
     data: { feeds: [], posts: [] },
-    stateOfForm: { error: null, isValid: '' },
-    stateOfLoading: { state: '', error: null, isLoaded: '' },
+    stateOfForm: { validError: null, isValid: true },
+    stateOfLoading: { state: '', loadingError: null, isLoaded: true },
+
   };
 
   const docElements = {
@@ -115,7 +116,7 @@ const init = () => {
       const urlsList = watchedState.data.feeds.map(({ feedUrl: url }) => url);
       const validityError = checkFormValidity(feedUrl, urlsList);
       if (validityError) {
-        watchedState.stateOfForm.error = `Error: ${validityError}`;
+        watchedState.stateOfForm.validError = `Error: ${validityError}`;
         watchedState.stateOfForm.isValid = false;
       } else {
         loadFeeds(feedUrl, watchedState);

@@ -26,12 +26,9 @@ const buildFeeds = ({ feedId, title }, feeds) => {
   feeds.prepend(h2El);
 };
 
-const showMessage = (message, feedback) => {
-  // eslint-disable-next-line no-param-reassign
-  feedback.textContent = message;
-};
+const changeMessageColor = (success, docElements) => {
+  const { feedback, form } = docElements;
 
-const changeMessageColor = (success, input, submitBtn, feedback, form) => {
   const showDanger = () => {
     feedback.classList.add('text-danger');
     feedback.classList.remove('text-success');
@@ -49,60 +46,59 @@ const changeMessageColor = (success, input, submitBtn, feedback, form) => {
   return (success) ? showSuccess() : showDanger();
 };
 
-const renderFormMessages = (state, form, feedback, submitButton, input) => {
+const showMessage = (message, success, docElements) => {
+  const { feedback } = docElements;
+  changeMessageColor(success, docElements);
+  // eslint-disable-next-line no-param-reassign
+  feedback.textContent = message;
+};
+
+const renderFormMessages = (state, docElements) => {
+  const { form, submitBtn, input } = docElements;
   switch (state) {
-    case ('loading'):
-      submitButton.setAttribute('disabled', true);
+    case ('loading'): {
+      submitBtn.setAttribute('disabled', true);
       input.setAttribute('readonly', true);
-      // eslint-disable-next-line no-param-reassign
-      feedback.textContent = i18next.t('messages.loading');
+      const message = i18next.t('messages.loading');
+      showMessage(message, true, docElements);
       break;
-    case ('loaded'):
+    }
+    case ('loaded'): {
       input.removeAttribute('readonly');
-      submitButton.removeAttribute('disabled');
-      // eslint-disable-next-line no-param-reassign
-      feedback.textContent = i18next.t('messages.loaded');
+      submitBtn.removeAttribute('disabled');
+      const message = i18next.t('messages.loaded');
+      showMessage(message, true, docElements);
       form.reset();
       break;
-    case ('unloaded'):
-      input.removeAttribute('readonly');
-      submitButton.removeAttribute('disabled');
-      break;
+    }
     default:
-      submitButton.removeAttribute('disabled');
+      submitBtn.removeAttribute('disabled');
       input.removeAttribute('readonly');
   }
 };
 
 const render = (path, value, document, docElements) => {
-  const {
-    form,
-    feedback,
-    submitBtn,
-    input,
-    feeds,
-  } = docElements;
+  const { feeds } = docElements;
 
   const mapping = {
-    'data.feeds': (feed) => buildFeeds(feed, feeds),
-    'data.posts': (post) => createPostElem(post, document),
-    'stateOfLoading.state': (state) => renderFormMessages(state, form, feedback, submitBtn, input),
-    'stateOfLoading.error': (error) => showMessage(error, feedback),
-    'stateOfLoading.isLoaded': (loaded) => changeMessageColor(loaded, input, submitBtn, feedback, form),
-    'stateOfForm.error': (error) => showMessage(error, feedback),
-    'stateOfForm.isValid': (valid) => changeMessageColor(valid, input, submitBtn, feedback, form),
+    feeds: (feed) => buildFeeds(feed, feeds),
+    posts: (post) => createPostElem(post, document),
+    state: (state) => renderFormMessages(state, docElements),
+    loadingError: (error) => showMessage(error, false, docElements),
+    validError: (error) => showMessage(error, false, docElements),
   };
 
   const findChangedValue = (valueAsArr) => {
     const [changedValue] = valueAsArr;
     return changedValue;
   };
-
+  const [, changedField] = path;
   const changedValue = (Array.isArray(value)) ? findChangedValue(value) : value;
-  mapping[path](changedValue);
+  mapping[changedField](changedValue);
 };
 
 const watch = (state, document, docElements) => onChange(state,
-  (path, value) => render(path, value, document, docElements));
+  (path, value) => render(path, value, document, docElements),
+  { pathAsArray: true, ignoreKeys: ['isLoaded', 'isValid'] });
 
 export default watch;
