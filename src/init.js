@@ -18,10 +18,14 @@ const updateFeeds = (state) => {
     .then((response) => {
       const parsedData = parseRSS(response.data);
       const { posts: updatedPosts } = parsedData;
-      const oldPostsTitlesAndURLs = state.data.posts.reduce((acc,
-        { title, link, feedId: id }) => ((id === feedId)
-        ? [...acc, { title, link }] : acc), []);
-      const newPosts = _.differenceWith(updatedPosts, oldPostsTitlesAndURLs, _.isEqual);
+      const { posts } = state.data;
+      const oldPosts = posts.filter(({ feedId: id }) => (id === feedId));
+      const compareTitleAndLink = (updatedPost, oldPost) => {
+        const { title: updatedTitle, link: updatedLink } = updatedPost;
+        const { title: oldTitle, link: oldLink } = oldPost;
+        return updatedTitle === oldTitle && updatedLink === oldLink;
+      };
+      const newPosts = _.differenceWith(updatedPosts, oldPosts, compareTitleAndLink);
       newPosts.forEach(({ title, link }) => {
         state.data.posts.unshift({
           postId: _.uniqueId(),
@@ -35,8 +39,14 @@ const updateFeeds = (state) => {
 };
 
 const loadFeeds = (feedUrl, state) => {
+  // eslint-disable-next-line no-param-reassign
+  state.stateOfForm.isValid = true;
+  // eslint-disable-next-line no-param-reassign
+  state.stateOfLoading.state = 'loading';
   axios.get(getProxyURL(feedUrl), { timeout })
     .then((response) => {
+      // eslint-disable-next-line no-param-reassign
+      state.stateOfLoading.isLoaded = true;
       const parsedData = parseRSS(response.data);
       const { title, posts } = parsedData;
       const feedId = _.uniqueId();
@@ -55,7 +65,7 @@ const loadFeeds = (feedUrl, state) => {
       // eslint-disable-next-line no-param-reassign
       state.stateOfLoading.state = 'unloaded';
       // eslint-disable-next-line no-param-reassign
-      state.isValid = false;
+      state.stateOfLoading.isLoaded = false;
       // eslint-disable-next-line no-param-reassign
       state.stateOfLoading.error = `Error: ${error.message}`;
     });
@@ -64,16 +74,17 @@ const loadFeeds = (feedUrl, state) => {
 const init = () => {
   const state = {
     data: { feeds: [], posts: [] },
-    stateOfForm: { error: null },
-    stateOfLoading: { state: '', error: null },
-    isValid: '',
+    stateOfForm: { error: null, isValid: '' },
+    stateOfLoading: { state: '', error: null, isLoaded: '' },
   };
 
-  const form = document.querySelector('.rss-form');
-  const feedback = document.querySelector('.feedback');
-  const submitButton = document.querySelector('.btn');
-  const feeds = document.querySelector('.feeds');
-  const input = document.querySelector('.form-control');
+  const docElements = {
+    form: document.querySelector('.rss-form'),
+    feedback: document.querySelector('.feedback'),
+    submitBtn: document.querySelector('.btn'),
+    feeds: document.querySelector('.feeds'),
+    input: document.querySelector('.form-control'),
+  };
 
   const schema = yup.string()
     .when('$urlsList', (urlsList) => yup.string()
@@ -89,27 +100,23 @@ const init = () => {
     }
   };
 
-  const watchedState = watch(state, form, feedback, submitButton, input, document, feeds);
+  const watchedState = watch(state, document, docElements);
 
   i18next.init({
     lng: 'en',
     debug: true,
     resources,
   }).then(() => {
+    const { form } = docElements;
     form.addEventListener('submit', (e) => {
       e.preventDefault();
-      watchedState.stateOfLoading.state = 'sending';
-      watchedState.stateOfForm.error = null;
-      watchedState.stateOfLoading.error = null;
-      watchedState.isValid = true;
       const formData = new FormData(e.target);
       const feedUrl = formData.get('url');
       const urlsList = watchedState.data.feeds.map(({ feedUrl: url }) => url);
       const validityError = checkFormValidity(feedUrl, urlsList);
       if (validityError) {
-        watchedState.stateOfLoading.state = 'unloaded';
-        watchedState.isValid = false;
         watchedState.stateOfForm.error = `Error: ${validityError}`;
+        watchedState.stateOfForm.isValid = false;
       } else {
         loadFeeds(feedUrl, watchedState);
       }

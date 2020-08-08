@@ -26,12 +26,12 @@ const buildFeeds = ({ feedId, title }, feeds) => {
   feeds.prepend(h2El);
 };
 
-const showError = (error, feedback) => {
+const showMessage = (message, feedback) => {
   // eslint-disable-next-line no-param-reassign
-  feedback.textContent = error;
+  feedback.textContent = message;
 };
 
-const showValidity = (valid, input, submitBtn, feedback, form) => {
+const changeMessageColor = (success, input, submitBtn, feedback, form) => {
   const showDanger = () => {
     feedback.classList.add('text-danger');
     feedback.classList.remove('text-success');
@@ -46,12 +46,12 @@ const showValidity = (valid, input, submitBtn, feedback, form) => {
     form.elements.url.classList.remove('is-invalid');
   };
 
-  return (valid) ? showSuccess() : showDanger();
+  return (success) ? showSuccess() : showDanger();
 };
 
 const renderFormMessages = (state, form, feedback, submitButton, input) => {
   switch (state) {
-    case ('sending'):
+    case ('loading'):
       submitButton.setAttribute('disabled', true);
       input.setAttribute('readonly', true);
       // eslint-disable-next-line no-param-reassign
@@ -74,14 +74,23 @@ const renderFormMessages = (state, form, feedback, submitButton, input) => {
   }
 };
 
-const render = (path, value, form, feedback, submitBtn, input, document, feeds) => {
+const render = (path, value, document, docElements) => {
+  const {
+    form,
+    feedback,
+    submitBtn,
+    input,
+    feeds,
+  } = docElements;
+
   const mapping = {
     'data.feeds': (feed) => buildFeeds(feed, feeds),
     'data.posts': (post) => createPostElem(post, document),
-    isValid: (valid) => showValidity(valid, input, submitBtn, feedback, form),
     'stateOfLoading.state': (state) => renderFormMessages(state, form, feedback, submitBtn, input),
-    'stateOfLoading.error': (error) => showError(error, feedback),
-    'stateOfForm.error': (error) => showError(error, feedback),
+    'stateOfLoading.error': (error) => showMessage(error, feedback),
+    'stateOfLoading.isLoaded': (loaded) => changeMessageColor(loaded, input, submitBtn, feedback, form),
+    'stateOfForm.error': (error) => showMessage(error, feedback),
+    'stateOfForm.isValid': (valid) => changeMessageColor(valid, input, submitBtn, feedback, form),
   };
 
   const findChangedValue = (valueAsArr) => {
@@ -93,7 +102,7 @@ const render = (path, value, form, feedback, submitBtn, input, document, feeds) 
   mapping[path](changedValue);
 };
 
-const watch = (state, form, feedback, submitButton, input, document, feeds) => onChange(state,
-  (path, value) => render(path, value, form, feedback, submitButton, input, document, feeds));
+const watch = (state, document, docElements) => onChange(state,
+  (path, value) => render(path, value, document, docElements));
 
 export default watch;
