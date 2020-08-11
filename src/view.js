@@ -53,27 +53,28 @@ const showMessage = (message, success, docElements) => {
   feedback.textContent = message;
 };
 
-const renderFormMessages = (state, docElements) => {
+const showLoadingProcess = (state, docElements, loadingError, success) => {
   const { form, submitBtn, input } = docElements;
   switch (state) {
     case ('loading'): {
       submitBtn.setAttribute('disabled', true);
       input.setAttribute('readonly', true);
       const message = i18next.t('messages.loading');
-      showMessage(message, true, docElements);
+      showMessage(message, success, docElements);
       break;
     }
     case ('loaded'): {
       input.removeAttribute('readonly');
       submitBtn.removeAttribute('disabled');
       const message = i18next.t('messages.loaded');
-      showMessage(message, true, docElements);
+      showMessage(message, success, docElements);
       form.reset();
       break;
     }
     default:
       submitBtn.removeAttribute('disabled');
       input.removeAttribute('readonly');
+      showMessage(loadingError, success, docElements);
   }
 };
 
@@ -81,24 +82,23 @@ const render = (path, value, document, docElements) => {
   const { feeds } = docElements;
 
   const mapping = {
-    feeds: (feed) => buildFeeds(feed, feeds),
-    posts: (post) => createPostElem(post, document),
-    state: (state) => renderFormMessages(state, docElements),
-    loadingError: (error) => showMessage(error, false, docElements),
-    validError: (error) => showMessage(error, false, docElements),
+    stateOfForm: ({ validError, isValid }) => showMessage(validError, isValid, docElements),
+    stateOfLoading: ({ state, loadingError, isLoadingCorrect }) => showLoadingProcess(state,
+      docElements, loadingError, isLoadingCorrect),
+    feeds: (allFeeds) => {
+      const [newFeed] = allFeeds;
+      buildFeeds(newFeed, feeds);
+    },
+    posts: (allPosts) => {
+      const [newPost] = allPosts;
+      createPostElem(newPost, document);
+    },
   };
 
-  const findChangedValue = (valueAsArr) => {
-    const [changedValue] = valueAsArr;
-    return changedValue;
-  };
-  const [, changedField] = path;
-  const changedValue = (Array.isArray(value)) ? findChangedValue(value) : value;
-  mapping[changedField](changedValue);
+  mapping[path](value);
 };
 
 const watch = (state, document, docElements) => onChange(state,
-  (path, value) => render(path, value, document, docElements),
-  { pathAsArray: true, ignoreKeys: ['isLoaded', 'isValid'] });
+  (path, value) => render(path, value, document, docElements));
 
 export default watch;

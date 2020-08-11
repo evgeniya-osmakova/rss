@@ -12,13 +12,13 @@ const proxy = 'https://cors-anywhere.herokuapp.com/';
 const getProxyURL = (url) => `${proxy}${url}`;
 
 const updateFeeds = (state) => {
-  const { feeds: allFeeds } = state.data;
+  const { feeds: allFeeds } = state;
   const arrOfPromises = allFeeds.map(({ feedUrl, feedId }) => axios.get(getProxyURL(feedUrl),
     { timeout })
     .then((response) => {
       const parsedData = parseRSS(response.data);
       const { posts: updatedPosts } = parsedData;
-      const { posts } = state.data;
+      const { posts } = state;
       const oldPosts = posts.filter(({ feedId: id }) => (id === feedId));
       const compareTitleAndLink = (updatedPost, oldPost) => {
         const { title: updatedTitle, link: updatedLink } = updatedPost;
@@ -27,7 +27,7 @@ const updateFeeds = (state) => {
       };
       const newPosts = _.differenceWith(updatedPosts, oldPosts, compareTitleAndLink);
       newPosts.forEach(({ title, link }) => {
-        state.data.posts.unshift({
+        state.posts.unshift({
           postId: _.uniqueId(),
           feedId,
           title,
@@ -40,43 +40,36 @@ const updateFeeds = (state) => {
 
 const loadFeeds = (feedUrl, state) => {
   // eslint-disable-next-line no-param-reassign
-  state.stateOfForm.isValid = true;
-  // eslint-disable-next-line no-param-reassign
-  state.stateOfLoading.state = 'loading';
+  state.stateOfLoading = { state: 'loading', loadingError: null, isLoadingCorrect: true };
   axios.get(getProxyURL(feedUrl), { timeout })
     .then((response) => {
       // eslint-disable-next-line no-param-reassign
-      state.stateOfLoading.isLoaded = true;
       const parsedData = parseRSS(response.data);
       const { title, posts } = parsedData;
       const feedId = _.uniqueId();
-      state.data.feeds.unshift({ feedId, title, feedUrl });
-      posts.forEach(({ title: postTitle, link }) => state.data.posts.unshift({
+      state.feeds.unshift({ feedId, title, feedUrl });
+      posts.forEach(({ title: postTitle, link }) => state.posts.unshift({
         postId: _.uniqueId(),
         feedId,
         title: postTitle,
         link,
       }));
       // eslint-disable-next-line no-param-reassign
-      state.stateOfLoading.state = 'loaded';
+      state.stateOfLoading = { state: 'loaded', loadingError: null, isLoadingCorrect: true };
       setTimeout(() => updateFeeds(state), timeout);
     })
     .catch((error) => {
       // eslint-disable-next-line no-param-reassign
-      state.stateOfLoading.state = 'unloaded';
-      // eslint-disable-next-line no-param-reassign
-      state.stateOfLoading.isLoaded = false;
-      // eslint-disable-next-line no-param-reassign
-      state.stateOfLoading.loadingError = `Error: ${error.message}`;
+      state.stateOfLoading = { state: 'unloaded', loadingError: `Error: ${error.message}`, isLoadingCorrect: false };
     });
 };
 
 const init = () => {
   const state = {
-    data: { feeds: [], posts: [] },
+    feeds: [],
+    posts: [],
     stateOfForm: { validError: null, isValid: true },
-    stateOfLoading: { state: '', loadingError: null, isLoaded: true },
-
+    stateOfLoading: { state: '', loadingError: null, isLoadingCorrect: true },
   };
 
   const docElements = {
@@ -113,11 +106,10 @@ const init = () => {
       e.preventDefault();
       const formData = new FormData(e.target);
       const feedUrl = formData.get('url');
-      const urlsList = watchedState.data.feeds.map(({ feedUrl: url }) => url);
+      const urlsList = watchedState.feeds.map(({ feedUrl: url }) => url);
       const validityError = checkFormValidity(feedUrl, urlsList);
       if (validityError) {
-        watchedState.stateOfForm.validError = `Error: ${validityError}`;
-        watchedState.stateOfForm.isValid = false;
+        watchedState.stateOfForm = { validError: `Error: ${validityError}`, isValid: false };
       } else {
         loadFeeds(feedUrl, watchedState);
       }
