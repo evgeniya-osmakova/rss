@@ -34,11 +34,13 @@ const updateFeeds = (state) => {
           link,
         }
       ));
-      // eslint-disable-next-line no-param-reassign
-      state.data = {
-        feeds: [...allFeeds],
-        posts: [...modifiedNewPosts, ...posts],
-      };
+      if (modifiedNewPosts.length > 0) {
+        // eslint-disable-next-line no-param-reassign
+        state.data = {
+          feeds: [...allFeeds],
+          posts: [...modifiedNewPosts, ...posts],
+        };
+      }
     }));
   Promise.all(arrOfPromises).finally(() => setTimeout(() => updateFeeds(state), timeout));
 };
