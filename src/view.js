@@ -18,60 +18,70 @@ const buildFeeds = (feeds, feedsList, posts) => {
   }).join('\n');
 };
 
-const render = (document, docElements, watchedState) => {
+const showLoadingProcess = (state, docElements, loadingError) => {
   const {
     form,
     submitBtn,
     input,
     feedback,
-    feeds,
   } = docElements;
-  const { validError, isValid } = watchedState.stateOfForm;
-  if (!isValid) {
-    feedback.classList.add('text-danger');
-    feedback.classList.remove('text-success');
-    form.elements.url.classList.add('is-invalid');
-    feedback.textContent = validError;
-  } else {
-    feedback.classList.remove('text-danger');
-    feedback.classList.add('text-success');
-    form.elements.url.classList.remove('is-invalid');
-    const { state, loadingError } = watchedState.stateOfLoading;
-    switch (state) {
-      case ('loading'): {
-        submitBtn.setAttribute('disabled', true);
-        input.setAttribute('readonly', true);
-        feedback.textContent = i18next.t('messages.loading');
-        break;
-      }
-      case ('loaded'): {
-        input.removeAttribute('readonly');
-        submitBtn.removeAttribute('disabled');
-        feedback.textContent = i18next.t('messages.loaded');
-        form.reset();
-        const { feeds: feedsList, posts } = watchedState.data;
-        buildFeeds(feeds, feedsList, posts);
-        break;
-      }
-      case ('unloaded'): {
-        submitBtn.removeAttribute('disabled');
-        input.removeAttribute('readonly');
-        feedback.textContent = loadingError;
-        feedback.classList.add('text-danger');
-        feedback.classList.remove('text-success');
-        form.elements.url.classList.add('is-invalid');
-        break;
-      }
-      default:
-        throw new Error(`Unknown loading state: '${state}'!`);
+  switch (state) {
+    case ('loading'): {
+      submitBtn.setAttribute('disabled', true);
+      input.setAttribute('readonly', true);
+      feedback.textContent = i18next.t('messages.loading');
+      break;
     }
+    case ('loaded'): {
+      input.removeAttribute('readonly');
+      submitBtn.removeAttribute('disabled');
+      feedback.textContent = i18next.t('messages.loaded');
+      form.reset();
+      break;
+    }
+    case ('failed'): {
+      submitBtn.removeAttribute('disabled');
+      input.removeAttribute('readonly');
+      feedback.textContent = loadingError;
+      feedback.classList.add('text-danger');
+      feedback.classList.remove('text-success');
+      form.elements.url.classList.add('is-invalid');
+      break;
+    }
+    default:
+      throw new Error(`Unknown loading state: '${state}'!`);
   }
 };
 
-const watch = (state, document, docElements) => {
-  const watchedState = onChange(state,
-    () => render(document, docElements, watchedState), { pathAsArray: true, ignoreKeys: ['data'] });
-  return watchedState;
+const showValidityProcess = (validError, isValid, feedback, form) => {
+  if (isValid) {
+    feedback.classList.remove('text-danger');
+    feedback.classList.add('text-success');
+    form.elements.url.classList.remove('is-invalid');
+  } else {
+    feedback.classList.add('text-danger');
+    feedback.classList.remove('text-success');
+    form.elements.url.classList.add('is-invalid');
+    // eslint-disable-next-line no-param-reassign
+    feedback.textContent = validError;
+  }
 };
+
+const render = (path, value, docElements) => {
+  const { feedback, form, feeds } = docElements;
+
+  const mapping = {
+    stateOfForm: ({ validError, isValid }) => showValidityProcess(validError,
+      isValid, feedback, form),
+    stateOfLoading: ({ state, loadingError }) => showLoadingProcess(state,
+      docElements, loadingError),
+    data: ({ feeds: feedsList, posts }) => buildFeeds(feeds, feedsList, posts),
+  };
+
+  mapping[path](value);
+};
+
+const watch = (state, docElements) => onChange(state,
+  (path, value) => render(path, value, docElements));
 
 export default watch;

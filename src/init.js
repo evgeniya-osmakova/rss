@@ -12,10 +12,11 @@ const proxy = 'https://cors-anywhere.herokuapp.com/';
 const getProxyURL = (url) => `${proxy}${url}`;
 
 const updateFeeds = (state) => {
-  const { feeds: allFeeds, posts } = state.data;
+  const { feeds: allFeeds } = state.data;
   const arrOfPromises = allFeeds.map(({ feedUrl, feedId }) => axios.get(getProxyURL(feedUrl),
     { timeout })
     .then((response) => {
+      const { posts } = state.data;
       const parsedData = parseRSS(response.data);
       const { posts: updatedPosts } = parsedData;
       const oldPosts = posts.filter(({ feedId: id }) => (id === feedId));
@@ -25,14 +26,19 @@ const updateFeeds = (state) => {
         return updatedTitle === oldTitle && updatedLink === oldLink;
       };
       const newPosts = _.differenceWith(updatedPosts, oldPosts, compareTitleAndLink);
-      newPosts.forEach(({ title, link }) => {
-        state.data.posts.unshift({
+      const modifiedNewPosts = newPosts.map(({ title, link }) => (
+        {
           postId: _.uniqueId(),
           feedId,
           title,
           link,
-        });
-      });
+        }
+      ));
+      // eslint-disable-next-line no-param-reassign
+      state.data = {
+        feeds: [...allFeeds],
+        posts: [...modifiedNewPosts, ...posts],
+      };
     }));
   Promise.all(arrOfPromises).finally(() => setTimeout(() => updateFeeds(state), timeout));
 };
@@ -44,22 +50,29 @@ const loadFeeds = (feedUrl, state) => {
     .then((response) => {
       // eslint-disable-next-line no-param-reassign
       const parsedData = parseRSS(response.data);
-      const { title, posts } = parsedData;
+      const { title, posts: newPosts } = parsedData;
       const feedId = _.uniqueId();
-      state.data.feeds.unshift({ feedId, title, feedUrl });
-      posts.forEach(({ title: postTitle, link }) => state.data.posts.unshift({
-        postId: _.uniqueId(),
-        feedId,
-        title: postTitle,
-        link,
-      }));
+      const modifiedNewPosts = newPosts.map(({ title: postTitle, link }) => (
+        {
+          postId: _.uniqueId(),
+          feedId,
+          title: postTitle,
+          link,
+        }
+      ));
+      const { feeds, posts } = state.data;
+      // eslint-disable-next-line no-param-reassign
+      state.data = {
+        feeds: [{ feedId, title, feedUrl }, ...feeds],
+        posts: [...modifiedNewPosts, ...posts],
+      };
       // eslint-disable-next-line no-param-reassign
       state.stateOfLoading = { state: 'loaded', loadingError: null };
       setTimeout(() => updateFeeds(state), timeout);
     })
     .catch((error) => {
       // eslint-disable-next-line no-param-reassign
-      state.stateOfLoading = { state: 'unloaded', loadingError: `Error: ${error.message}` };
+      state.stateOfLoading = { state: 'failed', loadingError: `Error: ${error.message}` };
     });
 };
 
@@ -92,7 +105,7 @@ const init = () => {
     }
   };
 
-  const watchedState = watch(state, document, docElements);
+  const watchedState = watch(state, docElements);
 
   i18next.init({
     lng: 'en',

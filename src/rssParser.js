@@ -12,7 +12,7 @@ const parseRSS = (data) => {
   }
   const title = document.querySelector('title').textContent;
   const posts = document.getElementsByTagName('item');
-  const postsData = [...posts].reduceRight((acc, post) => {
+  const postsData = [...posts].reduce((acc, post) => {
     const postTitle = post.querySelector('title').textContent;
     const url = new URL(post.querySelector('link').textContent);
     const link = url.pathname;
