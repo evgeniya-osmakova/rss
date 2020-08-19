@@ -26,42 +26,27 @@ const updateFeeds = (state) => {
         return updatedTitle === oldTitle && updatedLink === oldLink;
       };
       const newPosts = _.differenceWith(updatedPosts, oldPosts, compareTitleAndLink);
-      const modifiedNewPosts = newPosts.map(({ title, link }) => (
-        {
-          postId: _.uniqueId(),
-          feedId,
-          title,
-          link,
-        }
-      ));
-      if (modifiedNewPosts.length > 0) {
-        // eslint-disable-next-line no-param-reassign
-        state.data = {
-          feeds: [...allFeeds],
-          posts: [...modifiedNewPosts, ...posts],
-        };
-      }
+      const { data } = state;
+      const modifiedNewPosts = newPosts.map((post) => ({ postId: _.uniqueId(), feedId, post }));
+      // eslint-disable-next-line no-param-reassign
+      state.data = {
+        ...data,
+        posts: [...posts, ...modifiedNewPosts],
+      };
     }));
   Promise.all(arrOfPromises).finally(() => setTimeout(() => updateFeeds(state), timeout));
 };
 
 const loadFeeds = (feedUrl, state) => {
+  const { stateOfLoading } = state;
   // eslint-disable-next-line no-param-reassign
-  state.stateOfLoading = { state: 'loading', loadingError: null };
+  state.stateOfLoading = { ...stateOfLoading, state: 'loading' };
   axios.get(getProxyURL(feedUrl), { timeout })
     .then((response) => {
-      // eslint-disable-next-line no-param-reassign
       const parsedData = parseRSS(response.data);
       const { title, posts: newPosts } = parsedData;
       const feedId = _.uniqueId();
-      const modifiedNewPosts = newPosts.map(({ title: postTitle, link }) => (
-        {
-          postId: _.uniqueId(),
-          feedId,
-          title: postTitle,
-          link,
-        }
-      ));
+      const modifiedNewPosts = newPosts.map((post) => ({ postId: _.uniqueId(), feedId, ...post }));
       const { feeds, posts } = state.data;
       // eslint-disable-next-line no-param-reassign
       state.data = {
@@ -80,7 +65,7 @@ const loadFeeds = (feedUrl, state) => {
 
 const init = () => {
   const state = {
-    data: { feeds: [], posts: [] },
+    data: { posts: [], feeds: [] },
     stateOfForm: { validError: null, isValid: true },
     stateOfLoading: { state: 'loading', loadingError: null },
   };

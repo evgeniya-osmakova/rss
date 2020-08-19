@@ -18,7 +18,7 @@ const buildFeeds = (feeds, feedsList, posts) => {
   }).join('\n');
 };
 
-const showLoadingProcess = (state, docElements, loadingError) => {
+const handleLoadingProcess = (state, docElements, loadingError) => {
   const {
     form,
     submitBtn,
@@ -53,7 +53,7 @@ const showLoadingProcess = (state, docElements, loadingError) => {
   }
 };
 
-const showValidityProcess = (validError, isValid, feedback, form) => {
+const handleValidityProcess = (validError, isValid, feedback, form) => {
   if (isValid) {
     feedback.classList.remove('text-danger');
     feedback.classList.add('text-success');
@@ -71,9 +71,9 @@ const render = (path, value, docElements) => {
   const { feedback, form, feeds } = docElements;
 
   const mapping = {
-    stateOfForm: ({ validError, isValid }) => showValidityProcess(validError,
+    stateOfForm: ({ validError, isValid }) => handleValidityProcess(validError,
       isValid, feedback, form),
-    stateOfLoading: ({ state, loadingError }) => showLoadingProcess(state,
+    stateOfLoading: ({ state, loadingError }) => handleLoadingProcess(state,
       docElements, loadingError),
     data: ({ feeds: feedsList, posts }) => buildFeeds(feeds, feedsList, posts),
   };
