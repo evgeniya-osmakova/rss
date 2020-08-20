@@ -27,11 +27,11 @@ const updateFeeds = (state) => {
       };
       const newPosts = _.differenceWith(updatedPosts, oldPosts, compareTitleAndLink);
       const { data } = state;
-      const modifiedNewPosts = newPosts.map((post) => ({ postId: _.uniqueId(), feedId, post }));
+      const modifiedNewPosts = newPosts.map((post) => ({ postId: _.uniqueId(), feedId, ...post }));
       // eslint-disable-next-line no-param-reassign
       state.data = {
         ...data,
-        posts: [...posts, ...modifiedNewPosts],
+        posts: [...modifiedNewPosts, ...posts],
       };
     }));
   Promise.all(arrOfPromises).finally(() => setTimeout(() => updateFeeds(state), timeout));
