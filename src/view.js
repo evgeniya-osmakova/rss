@@ -1,8 +1,8 @@
 import i18next from 'i18next';
 import onChange from 'on-change';
+/* eslint no-param-reassign: 0 */
 
 const buildFeeds = (feeds, feedsList, posts) => {
-  // eslint-disable-next-line no-param-reassign
   feeds.innerHTML = feedsList.map((feed) => {
     const { feedId, title } = feed;
     const feedPosts = posts.filter(({ feedId: id }) => (id === feedId));
@@ -62,7 +62,6 @@ const handleValidityProcess = (validError, isValid, feedback, form) => {
     feedback.classList.add('text-danger');
     feedback.classList.remove('text-success');
     form.elements.url.classList.add('is-invalid');
-    // eslint-disable-next-line no-param-reassign
     feedback.textContent = validError;
   }
 };

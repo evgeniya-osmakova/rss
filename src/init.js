@@ -5,6 +5,7 @@ import i18next from 'i18next';
 import resources from './locales/index';
 import parseRSS from './rssParser';
 import watch from './view';
+/* eslint no-param-reassign: 0 */
 
 const timeout = 5000;
 
@@ -28,7 +29,6 @@ const updateFeeds = (state) => {
       const newPosts = _.differenceWith(updatedPosts, oldPosts, compareTitleAndLink);
       const { data } = state;
       const modifiedNewPosts = newPosts.map((post) => ({ postId: _.uniqueId(), feedId, ...post }));
-      // eslint-disable-next-line no-param-reassign
       state.data = {
         ...data,
         posts: [...modifiedNewPosts, ...posts],
@@ -37,9 +37,8 @@ const updateFeeds = (state) => {
   Promise.all(arrOfPromises).finally(() => setTimeout(() => updateFeeds(state), timeout));
 };
 
-const loadFeeds = (feedUrl, state) => {
+const loadFeed = (feedUrl, state) => {
   const { stateOfLoading } = state;
-  // eslint-disable-next-line no-param-reassign
   state.stateOfLoading = { ...stateOfLoading, state: 'loading' };
   axios.get(getProxyURL(feedUrl), { timeout })
     .then((response) => {
@@ -48,17 +47,14 @@ const loadFeeds = (feedUrl, state) => {
       const feedId = _.uniqueId();
       const modifiedNewPosts = newPosts.map((post) => ({ postId: _.uniqueId(), feedId, ...post }));
       const { feeds, posts } = state.data;
-      // eslint-disable-next-line no-param-reassign
       state.data = {
         feeds: [{ feedId, title, feedUrl }, ...feeds],
         posts: [...modifiedNewPosts, ...posts],
       };
-      // eslint-disable-next-line no-param-reassign
       state.stateOfLoading = { state: 'loaded', loadingError: null };
       setTimeout(() => updateFeeds(state), timeout);
     })
     .catch((error) => {
-      // eslint-disable-next-line no-param-reassign
       state.stateOfLoading = { state: 'failed', loadingError: `Error: ${error.message}` };
     });
 };
@@ -110,7 +106,7 @@ const init = () => {
         watchedState.stateOfForm = { validError: `Error: ${validityError}`, isValid: false };
       } else {
         watchedState.stateOfForm = { validError: null, isValid: true };
-        loadFeeds(feedUrl, watchedState);
+        loadFeed(feedUrl, watchedState);
       }
     });
   });
