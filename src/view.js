@@ -12,7 +12,7 @@ const buildFeeds = (feeds, feedsList, posts) => {
         title: postTitle,
         link,
       } = post;
-      return `<div id='${postId}'><a href=${link}">${postTitle}</a></div>`;
+      return `<div id='${postId}'><a href=${link}>${postTitle}</a></div>`;
     }).join('\n');
     return `<h2 id='${feedId}'>${title}</h2>${feedPostsList}`;
   }).join('\n');
