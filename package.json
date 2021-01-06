@@ -24,7 +24,7 @@
     "lodash": "^4.17.19",
     "yup": "^0.29.1",
     "on-change": "^2.0.1",
-    "axios": "^0.19.2",
+    "axios": "^0.21.1",
     "bootstrap": "^4.5.0"
   },
   "devDependencies": {
